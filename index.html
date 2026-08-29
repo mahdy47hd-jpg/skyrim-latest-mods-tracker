@@ -13,24 +13,27 @@
         <header>
             <h1>🎮 Skyrim Latest Mods Tracker</h1>
             <p>Discover the newest published mods for Skyrim and Fallout</p>
+            <p class="subtitle">Data powered by Nexus Mods API</p>
         </header>
 
         <div class="controls">
             <div class="filter-group">
                 <label for="gameSelect">Game:</label>
                 <select id="gameSelect">
-                    <option value="skyrim">Skyrim</option>
                     <option value="skyrimspecialedition">Skyrim Special Edition</option>
+                    <option value="skyrim">Skyrim (Legacy)</option>
                     <option value="fallout4">Fallout 4</option>
+                    <option value="fallout3">Fallout 3</option>
                 </select>
             </div>
 
             <div class="filter-group">
-                <label for="platformSelect">Platform:</label>
-                <select id="platformSelect">
-                    <option value="WINDOWS">PC</option>
-                    <option value="XB1">Xbox One</option>
-                    <option value="PS4">PlayStation 4</option>
+                <label for="sortSelect">Sort By:</label>
+                <select id="sortSelect">
+                    <option value="updated">Recently Updated</option>
+                    <option value="published">Recently Published</option>
+                    <option value="trending">Trending</option>
+                    <option value="downloaded">Most Downloaded</option>
                 </select>
             </div>
 
@@ -50,6 +53,7 @@
 
         <div id="loadingSpinner" class="spinner" style="display:none;"></div>
         <div id="errorMessage" class="error-message" style="display:none;"></div>
+        <div id="successMessage" class="success-message" style="display:none;"></div>
         
         <div class="mods-grid" id="modsGrid">
             <p class="loading-text">Loading latest mods...</p>

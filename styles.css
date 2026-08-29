@@ -4,6 +4,10 @@
     box-sizing: border-box;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -13,14 +17,14 @@ body {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
 }
 
 header {
     text-align: center;
     margin-bottom: 40px;
-    padding: 20px 0;
+    padding: 30px 20px;
     border-bottom: 2px solid #334155;
 }
 
@@ -34,6 +38,13 @@ header h1 {
 header p {
     font-size: 1.1rem;
     color: #cbd5e1;
+    margin: 5px 0;
+}
+
+header .subtitle {
+    font-size: 0.9rem;
+    color: #64748b;
+    font-style: italic;
 }
 
 .controls {
@@ -52,6 +63,7 @@ header p {
     display: flex;
     flex-direction: column;
     gap: 5px;
+    min-width: 150px;
 }
 
 .filter-group label {
@@ -61,7 +73,7 @@ header p {
 }
 
 .filter-group select {
-    padding: 8px 12px;
+    padding: 10px 12px;
     background: #0f172a;
     color: #e2e8f0;
     border: 1px solid #475569;
@@ -82,7 +94,7 @@ header p {
 }
 
 .btn-refresh {
-    padding: 10px 20px;
+    padding: 10px 24px;
     background: #38bdf8;
     color: #0f172a;
     border: none;
@@ -92,6 +104,7 @@ header p {
     cursor: pointer;
     transition: all 0.3s ease;
     white-space: nowrap;
+    margin-top: auto;
 }
 
 .btn-refresh:hover {
@@ -108,16 +121,17 @@ header p {
     color: #94a3b8;
     padding: 0 10px;
     white-space: nowrap;
+    margin-left: auto;
 }
 
 .spinner {
     border: 4px solid #334155;
     border-top: 4px solid #38bdf8;
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
     animation: spin 1s linear infinite;
-    margin: 20px auto;
+    margin: 30px auto;
 }
 
 @keyframes spin {
@@ -133,36 +147,86 @@ header p {
     margin-bottom: 20px;
     border-left: 4px solid #dc2626;
     font-weight: 500;
+    animation: slideIn 0.3s ease;
+}
+
+.success-message {
+    background: #065f46;
+    color: #a7f3d0;
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid #10b981;
+    font-weight: 500;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .loading-text {
     text-align: center;
     color: #94a3b8;
-    padding: 40px 20px;
+    padding: 60px 20px;
     font-size: 1.1rem;
+    grid-column: 1 / -1;
 }
 
 .mods-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 20px;
+    margin-bottom: 30px;
 }
 
 .mod-card {
     background: #1e293b;
     border: 1px solid #334155;
     border-radius: 12px;
-    padding: 20px;
+    overflow: hidden;
     transition: all 0.3s ease;
-    cursor: pointer;
     display: flex;
     flex-direction: column;
+    height: 100%;
 }
 
 .mod-card:hover {
     border-color: #38bdf8;
-    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.15);
-    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(56, 189, 248, 0.2);
+    transform: translateY(-8px);
+}
+
+.mod-image-container {
+    width: 100%;
+    height: 180px;
+    overflow: hidden;
+    background: #0f172a;
+}
+
+.mod-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.mod-card:hover .mod-image {
+    transform: scale(1.05);
+}
+
+.mod-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
 }
 
 .mod-header {
@@ -175,44 +239,52 @@ header p {
 
 .mod-header h3 {
     color: #38bdf8;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     word-break: break-word;
     flex: 1;
 }
 
 .mod-date {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: #64748b;
     white-space: nowrap;
 }
 
 .mod-description {
     color: #cbd5e1;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     line-height: 1.5;
     margin-bottom: 15px;
     flex-grow: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .mod-footer {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
-    font-size: 0.85rem;
+    gap: 15px;
+    font-size: 0.8rem;
     color: #94a3b8;
     border-top: 1px solid #334155;
     padding-top: 12px;
 }
 
-.mod-author,
-.mod-size,
-.mod-downloads {
+.mod-stat {
     display: flex;
     align-items: center;
     gap: 4px;
 }
 
 /* Responsive Design */
+@media (max-width: 1024px) {
+    .mods-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+}
+
 @media (max-width: 768px) {
     header h1 {
         font-size: 1.8rem;
@@ -228,6 +300,7 @@ header p {
 
     .btn-refresh {
         width: 100%;
+        margin-top: 0;
     }
 
     .mods-grid {
@@ -237,12 +310,55 @@ header p {
     .last-update {
         width: 100%;
         text-align: center;
+        margin-left: 0;
+        margin-top: 10px;
+    }
+
+    .mod-image-container {
+        height: 150px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+    }
+
+    header {
+        margin-bottom: 20px;
+        padding: 20px 10px;
+    }
+
+    header h1 {
+        font-size: 1.5rem;
+    }
+
+    header p {
+        font-size: 0.9rem;
+    }
+
+    .controls {
+        padding: 15px;
+        gap: 10px;
+    }
+
+    .filter-group {
+        min-width: 100%;
+    }
+
+    .mod-card {
+        border-radius: 8px;
+    }
+
+    .mod-content {
+        padding: 15px;
     }
 }
 
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
