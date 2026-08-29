@@ -1,197 +1,104 @@
-class LatestModsTracker {
-    constructor() {
-        this.apiBase = 'https://bethesda.net/api/magiclinks/v2/magiclinks';
-        this.refreshInterval = null;
-        this.currentGame = 'skyrim';
-        this.currentPlatform = 'WINDOWS';
-        this.mods = [];
+const CONFIG = {
+    API_URL: 'https://allorigins.win' + encodeURIComponent('https://bethesda.net'),
+    defaultGame: 'skyrim',
+    defaultPlatform: 'XB1'
+};
 
-        this.elements = {
-            gameSelect: document.getElementById('gameSelect'),
-            platformSelect: document.getElementById('platformSelect'),
-            refreshInterval: document.getElementById('refreshInterval'),
-            refreshBtn: document.getElementById('refreshBtn'),
-            modsGrid: document.getElementById('modsGrid'),
-            lastUpdate: document.getElementById('lastUpdate'),
-            loadingSpinner: document.getElementById('loadingSpinner'),
-            errorMessage: document.getElementById('errorMessage')
-        };
+const DOM = {
+    gameSelect: document.getElementById('gameSelect'),
+    platformSelect: document.getElementById('platformSelect'),
+    refreshInterval: document.getElementById('refreshInterval'),
+    refreshBtn: document.getElementById('refreshBtn'),
+    modsGrid: document.getElementById('modsGrid'),
+    lastUpdate: document.getElementById('lastUpdate'),
+    loadingSpinner: document.getElementById('loadingSpinner'),
+    errorMessage: document.getElementById('errorMessage')
+};
 
-        this.init();
-    }
+let refreshTimer = null;
 
-    init() {
-        this.attachEventListeners();
-        this.loadMods();
-    }
-
-    attachEventListeners() {
-        this.elements.gameSelect.addEventListener('change', () => {
-            this.currentGame = this.elements.gameSelect.value;
-            this.loadMods();
-        });
-
-        this.elements.platformSelect.addEventListener('change', () => {
-            this.currentPlatform = this.elements.platformSelect.value;
-            this.loadMods();
-        });
-
-        this.elements.refreshInterval.addEventListener('change', () => {
-            const interval = parseInt(this.elements.refreshInterval.value);
-            this.setAutoRefresh(interval);
-        });
-
-        this.elements.refreshBtn.addEventListener('click', () => {
-            this.loadMods();
-        });
-    }
-
-    async loadMods() {
-        try {
-            this.showLoadingSpinner(true);
-            this.hideErrorMessage();
-
-            const mods = await this.fetchLatestMods();
-            this.mods = mods;
-            this.renderMods(mods);
-            this.updateLastRefresh();
-        } catch (error) {
-            console.error('Error loading mods:', error);
-            this.showErrorMessage('Failed to load mods. Please try again.');
-        } finally {
-            this.showLoadingSpinner(false);
-        }
-    }
-
-    async fetchLatestMods() {
-        // Build query parameters
-        const params = new URLSearchParams({
-            game: this.currentGame,
-            platform: this.currentPlatform,
-            sortBy: 'latest',
-            _sortBy: 'latest',
-            v: Date.now() // Cache buster
-        });
-
-        const url = `${this.apiBase}?${params.toString()}`;
-
-        const response = await fetch(url, {
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+async function fetchMods() {
+    if (DOM.loadingSpinner) DOM.loadingSpinner.style.display = 'block';
+    if (DOM.errorMessage) DOM.errorMessage.style.display = 'none';
+    if (DOM.modsGrid) DOM.modsGrid.innerHTML = '';
+    
+    try {
+        const game = DOM.gameSelect ? DOM.gameSelect.value : CONFIG.defaultGame;
+        let platform = DOM.platformSelect ? DOM.platformSelect.value : CONFIG.defaultPlatform;
+        
+        if (platform.toLowerCase() === 'windows' || platform.toLowerCase() === 'pc') {
+            platform = 'PC';
+        } else if (platform.toLowerCase().includes('xbox')) {
+            platform = 'XB1';
+        } else if (platform.toLowerCase().includes('playstation') || platform.toLowerCase().includes('ps4')) {
+            platform = 'PS4';
         }
 
+        const targetUrl = `https://bethesda.net{game}&number_results=40&order=desc&sort=updated&platform=${platform}`;
+        const finalUrl = 'https://allorigins.win' + encodeURIComponent(targetUrl);
+        
+        const response = await fetch(finalUrl);
+        if (!response.ok) throw new Error('Network response error');
+        
         const data = await response.json();
         
-        // Parse and sort mods by date (newest first)
-        const mods = (data.data || []).slice(0, 50); // Limit to 50 mods
-        return mods;
-    }
-
-    renderMods(mods) {
-        if (!mods || mods.length === 0) {
-            this.elements.modsGrid.innerHTML = '<div class="no-results">No mods found. Try different filters.</div>';
-            return;
+        if (data && data.mods && data.mods.length > 0) {
+            displayMods(data.mods);
+            updateTimestamp();
+        } else {
+            showError('No mods found for this selection.');
         }
-
-        const html = mods.map(mod => this.createModCard(mod)).join('');
-        this.elements.modsGrid.innerHTML = html;
-    }
-
-    createModCard(mod) {
-        const name = mod.name || 'Unknown';
-        const author = mod.author_name || 'Unknown Author';
-        const description = mod.description || 'No description available';
-        const imageUrl = mod.image_url || '';
-        const modUrl = mod.url || '#';
-        const datePublished = mod.created_date ? new Date(mod.created_date).toLocaleDateString() : 'Unknown';
-        const downloads = mod.downloads || 0;
-        const favorites = mod.favorites || 0;
-
-        return `
-            <div class="mod-card" onclick="if(event.target.tagName !== 'A') window.open('${this.escapeHtml(modUrl)}', '_blank')">
-                <div class="mod-card-header">
-                    <h3 class="mod-title">${this.escapeHtml(name)}</h3>
-                    <span class="mod-platform">${this.getPlatformLabel()}</span>
-                </div>
-                <p class="mod-author">by ${this.escapeHtml(author)}</p>
-                <p class="mod-description">${this.escapeHtml(description.substring(0, 150))}</p>
-                <div class="mod-stats">
-                    <span class="stat">📥 ${this.formatNumber(downloads)} Downloads</span>
-                    <span class="stat">❤️ ${this.formatNumber(favorites)} Favorites</span>
-                </div>
-                <p class="mod-date">📅 Published: ${datePublished}</p>
-                <a href="${this.escapeHtml(modUrl)}" target="_blank" class="mod-link">View on Bethesda.net →</a>
-            </div>
-        `;
-    }
-
-    getPlatformLabel() {
-        const labels = {
-            'WINDOWS': 'PC',
-            'XB1': 'Xbox',
-            'PS4': 'PlayStation'
-        };
-        return labels[this.currentPlatform] || this.currentPlatform;
-    }
-
-    formatNumber(num) {
-        if (num >= 1000000) {
-            return (num / 1000000).toFixed(1) + 'M';
-        }
-        if (num >= 1000) {
-            return (num / 1000).toFixed(1) + 'K';
-        }
-        return num.toString();
-    }
-
-    escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    setAutoRefresh(interval) {
-        // Clear existing interval
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-            this.refreshInterval = null;
-        }
-
-        // Set new interval if enabled
-        if (interval > 0) {
-            this.refreshInterval = setInterval(() => {
-                this.loadMods();
-            }, interval);
-        }
-    }
-
-    showLoadingSpinner(show) {
-        this.elements.loadingSpinner.style.display = show ? 'block' : 'none';
-    }
-
-    showErrorMessage(message) {
-        this.elements.errorMessage.textContent = message;
-        this.elements.errorMessage.style.display = 'block';
-    }
-
-    hideErrorMessage() {
-        this.elements.errorMessage.style.display = 'none';
-    }
-
-    updateLastRefresh() {
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString();
-        this.elements.lastUpdate.textContent = `Last updated: ${timeStr}`;
+    } catch (error) {
+        console.error(error);
+        showError('Failed to load mods. Please try again.');
+    } finally {
+        if (DOM.loadingSpinner) DOM.loadingSpinner.style.display = 'none';
     }
 }
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    new LatestModsTracker();
+function displayMods(mods) {
+    if (!DOM.modsGrid) return;
+    DOM.modsGrid.innerHTML = mods.map(mod => `
+        <div class="mod-card" style="border: 1px solid #334155; padding: 15px; margin: 10px 0; border-radius: 8px; background: #1e293b; text-align: left;">
+            <h3 style="color: #38bdf8; margin-top: 0; font-size: 18px;">${mod.name || 'Unknown Mod'}</h3>
+            <p style="font-size: 14px; color: #cbd5e1; line-height: 1.4;">${mod.description ? mod.description.substring(0, 150) + '...' : 'No description available.'}</p>
+            <div style="font-size: 12px; color: #94a3b8; display: flex; justify-content: space-between; margin-top: 10px;">
+                <span>👤 ${mod.author_username || 'Unknown'}</span>
+                <span>💾 ${(mod.size ? (mod.size / 1024 / 1024).toFixed(2) : 0)} MB</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateTimestamp() {
+    if (DOM.lastUpdate) {
+        DOM.lastUpdate.innerText = `Last updated: ${new Date().toLocaleTimeString()}`;
+    }
+}
+
+function showError(message) {
+    if (DOM.errorMessage) {
+        DOM.errorMessage.innerText = message;
+        DOM.errorMessage.style.display = 'block';
+    }
+}
+
+function setupAutoRefresh() {
+    if (refreshTimer) clearInterval(refreshTimer);
+    if (!DOM.refreshInterval) return;
+    
+    const value = DOM.refreshInterval.value;
+    if (value === 'manual' || !value) return;
+    
+    refreshTimer = setInterval(fetchMods, parseInt(value) * 1000);
+}
+
+if (DOM.refreshBtn) DOM.refreshBtn.addEventListener('click', fetchMods);
+if (DOM.gameSelect) DOM.gameSelect.addEventListener('change', fetchMods);
+if (DOM.platformSelect) DOM.platformSelect.addEventListener('change', fetchMods);
+if (DOM.refreshInterval) DOM.refreshInterval.addEventListener('change', setupAutoRefresh);
+
+window.addEventListener('DOMContentLoaded', () => {
+    fetchMods();
+    setupAutoRefresh();
 });
