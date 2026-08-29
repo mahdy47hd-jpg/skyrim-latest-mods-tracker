@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skyrim Latest Mods Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 Skyrim Latest Mods Tracker</h1>
+            <p>Discover the newest published mods for Skyrim and Fallout</p>
+        </header>
+
+        <div class="controls">
+            <div class="filter-group">
+                <label for="gameSelect">Game:</label>
+                <select id="gameSelect">
+                    <option value="skyrim">Skyrim</option>
+                    <option value="fallout4">Fallout 4</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="platformSelect">Platform:</label>
+                <select id="platformSelect">
+                    <option value="WINDOWS">PC</option>
+                    <option value="XB1">Xbox One</option>
+                    <option value="PS4">Playstation 4</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="refreshInterval">Auto-refresh:</label>
+                <select id="refreshInterval">
+                    <option value="0">Disabled</option>
+                    <option value="30000">30 seconds</option>
+                    <option value="60000" selected>1 minute</option>
+                    <option value="300000">5 minutes</option>
+                </select>
+            </div>
+
+            <button id="refreshBtn" class="btn-refresh">🔄 Refresh Now</button>
+            <span id="lastUpdate" class="last-update">Loading...</span>
+        </div>
+
+        <div id="loadingSpinner" class="spinner" style="display:none;"></div>
+        <div id="errorMessage" class="error-message" style="display:none;"></div>
+        
+        <div class="mods-grid" id="modsGrid">
+            <p class="loading-text">Loading latest mods...</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
