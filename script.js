@@ -2,7 +2,8 @@
 const CONFIG = {
     // Bethesda's official UGC (User Generated Content) API endpoint
     BETHESDA_API_BASE: 'https://api.bethesda.net/ugcmods/v2',
-    CORS_PROXY: 'https://cors-anywhere.herokuapp.com/',
+    // Using corsproxy.io - more stable and no activation needed
+    CORS_PROXY: 'https://corsproxy.io/?',
     games: {
         'skyrim': 'SKYRIM',
         'skyrimse': 'SKYRIMSE', // Skyrim Special Edition
@@ -59,13 +60,13 @@ async function fetchMods() {
     hideSuccess();
     
     try {
-        const game = DOM.gameSelect?.value || 'skyrim';
+        const game = DOM.gameSelect?.value || 'skyrimse';
         const platform = DOM.platformSelect?.value || 'PC';
         
         // Construct Bethesda API URL
         // Format: GET /ugcmods/v2/content?product=GAME&platform=PLATFORM&number_results=40&order=desc&sort=updated&deleted=false
         const params = new URLSearchParams({
-            'product': CONFIG.games[game] || 'SKYRIM',
+            'product': CONFIG.games[game] || 'SKYRIMSE',
             'platform': CONFIG.platforms[platform] || 'WINDOWS',
             'number_results': '40',
             'order': 'desc',
@@ -74,9 +75,10 @@ async function fetchMods() {
         });
         
         const apiUrl = `${CONFIG.BETHESDA_API_BASE}/content?${params.toString()}`;
-        const proxiedUrl = CONFIG.CORS_PROXY + apiUrl;
+        const proxiedUrl = CONFIG.CORS_PROXY + encodeURIComponent(apiUrl);
         
         console.log('Fetching from Bethesda API:', apiUrl);
+        console.log('Using corsproxy.io for CORS bypass');
         console.log('Proxied URL:', proxiedUrl);
         
         const response = await fetchWithTimeout(proxiedUrl, 20000);
@@ -86,7 +88,7 @@ async function fetchMods() {
                 throw new Error('API rate limit reached. Please wait and try again.');
             }
             if (response.status === 403) {
-                throw new Error('Access denied. Bethesda API may be restricting access.');
+                throw new Error('Access denied by Bethesda API. Proxy may have been blocked.');
             }
             if (response.status === 502 || response.status === 503) {
                 throw new Error('Bethesda API is temporarily unavailable.');
@@ -103,7 +105,7 @@ async function fetchMods() {
             updateTimestamp();
             showSuccess(`Successfully loaded ${data.mods.length} Bethesda mods`);
         } else {
-            showError('No mods found for this selection. Please try another platform/game combination.');
+            showError('No mods found for this selection. Try a different platform or game.');
         }
     } catch (error) {
         console.error('Fetch Error:', error);
@@ -111,9 +113,9 @@ async function fetchMods() {
         let errorMsg = 'Failed to load mods from Bethesda API.';
         
         if (error.name === 'AbortError') {
-            errorMsg = 'Request timeout. Bethesda API took too long to respond.';
+            errorMsg = 'Request timeout. Bethesda API took too long to respond. Try again in a moment.';
         } else if (error instanceof TypeError) {
-            errorMsg = 'Network error. Check your internet connection. CORS proxy may also need activation.';
+            errorMsg = 'Network error. Check your connection and try again.';
         } else {
             errorMsg = error.message || errorMsg;
         }
@@ -145,6 +147,11 @@ function displayMods(mods) {
         const description = mod.description || mod.summary || 'No description available.';
         const size = mod.size ? (mod.size / 1024 / 1024).toFixed(2) : 'N/A';
         const downloads = mod.download_count || 0;
+        const platform = mod.platform || 'N/A';
+        
+        let platformClass = 'badge-pc';
+        if (platform === 'XBOX') platformClass = 'badge-xbox';
+        if (platform === 'PLAYSTATION') platformClass = 'badge-ps4';
         
         return `
             <div class="mod-card">
@@ -153,8 +160,8 @@ function displayMods(mods) {
                     <span class="mod-date">${uploadDate}</span>
                 </div>
                 <div class="mod-platform">
-                    <span class="badge ${mod.platform === 'WINDOWS' ? 'badge-pc' : mod.platform === 'XBOX' ? 'badge-xbox' : 'badge-ps4'}">
-                        ${mod.platform || 'N/A'}
+                    <span class="badge ${platformClass}">
+                        ${platform}
                     </span>
                 </div>
                 <p class="mod-description">${description.substring(0, 200)}${description.length > 200 ? '...' : ''}</p>
