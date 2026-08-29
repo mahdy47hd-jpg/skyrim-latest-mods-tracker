@@ -1,19 +1,17 @@
-// Skyrim Latest Mods Tracker - Using Bethesda UGC API
+// Skyrim Latest Mods Tracker - Using Bethesda API via JSONP
 const CONFIG = {
-    // Bethesda's official UGC (User Generated Content) API endpoint
-    BETHESDA_API_BASE: 'https://api.bethesda.net/ugcmods/v2',
-    // Using corsproxy.io - more stable and no activation needed
-    CORS_PROXY: 'https://corsproxy.io/?',
+    // Using a reliable JSONP backend that bypasses CORS
+    PROXY_URL: 'https://devlicious.link/modorganiser/moddata.php',
     games: {
+        'skyrimse': 'SKYRIMSE',
         'skyrim': 'SKYRIM',
-        'skyrimse': 'SKYRIMSE', // Skyrim Special Edition
         'fallout4': 'FALLOUT4',
         'fallout76': 'FALLOUT76'
     },
     platforms: {
         'PC': 'WINDOWS',
-        'XBOX': 'XBOX',
-        'PS4': 'PLAYSTATION'
+        'XBOX': 'XB1',
+        'PS4': 'PS4'
     }
 };
 
@@ -32,29 +30,8 @@ const DOM = {
 let refreshTimer = null;
 let cachedMods = [];
 
-// Fetch with timeout
-async function fetchWithTimeout(url, timeout = 15000) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-    
-    try {
-        const response = await fetch(url, {
-            signal: controller.signal,
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
-        });
-        clearTimeout(timeoutId);
-        return response;
-    } catch (error) {
-        clearTimeout(timeoutId);
-        throw error;
-    }
-}
-
-// Main fetch mods function
-async function fetchMods() {
+// Fetch mods using JSONP (no CORS issues!)
+function fetchMods() {
     showSpinner(true);
     hideError();
     hideSuccess();
@@ -63,72 +40,65 @@ async function fetchMods() {
         const game = DOM.gameSelect?.value || 'skyrimse';
         const platform = DOM.platformSelect?.value || 'PC';
         
-        // Construct Bethesda API URL
-        // Format: GET /ugcmods/v2/content?product=GAME&platform=PLATFORM&number_results=40&order=desc&sort=updated&deleted=false
+        // Map to Bethesda's expected values
+        const bethesdaGame = CONFIG.games[game] || 'SKYRIMSE';
+        const bethesdaPlatform = CONFIG.platforms[platform] || 'WINDOWS';
+        
+        console.log(`Fetching mods for ${bethesdaGame} on ${bethesdaPlatform}`);
+        
+        // Create JSONP callback
+        const callbackName = 'modData_' + Date.now();
+        window[callbackName] = function(data) {
+            console.log('JSONP Response received:', data);
+            
+            // Clean up callback
+            delete window[callbackName];
+            document.body.removeChild(script);
+            
+            if (data && Array.isArray(data) && data.length > 0) {
+                cachedMods = data;
+                displayMods(data);
+                updateTimestamp();
+                showSuccess(`✅ Successfully loaded ${data.length} Bethesda mods!`);
+            } else {
+                showError('No mods found for this selection. Try a different platform or game.');
+            }
+            
+            showSpinner(false);
+        };
+        
+        // Build JSONP request URL
         const params = new URLSearchParams({
-            'product': CONFIG.games[game] || 'SKYRIMSE',
-            'platform': CONFIG.platforms[platform] || 'WINDOWS',
-            'number_results': '40',
-            'order': 'desc',
-            'sort': 'updated',
-            'deleted': 'false'
+            'selectGame': bethesdaGame,
+            'selectPlatform': bethesdaPlatform,
+            'searchText': ''
         });
         
-        const apiUrl = `${CONFIG.BETHESDA_API_BASE}/content?${params.toString()}`;
-        const proxiedUrl = CONFIG.CORS_PROXY + encodeURIComponent(apiUrl);
+        const url = `${CONFIG.PROXY_URL}?${params.toString()}&callback=${callbackName}`;
         
-        console.log('Fetching from Bethesda API:', apiUrl);
-        console.log('Using corsproxy.io for CORS bypass');
-        console.log('Proxied URL:', proxiedUrl);
-        
-        const response = await fetchWithTimeout(proxiedUrl, 20000);
-        
-        if (!response.ok) {
-            if (response.status === 429) {
-                throw new Error('API rate limit reached. Please wait and try again.');
+        // Create and append script tag (JSONP technique)
+        const script = document.createElement('script');
+        script.src = url;
+        script.onerror = function() {
+            console.error('Failed to load JSONP script');
+            showSpinner(false);
+            showError('Failed to fetch mods. The proxy server may be unavailable. Please try again later.');
+            delete window[callbackName];
+            document.body.removeChild(script);
+            
+            // Show cached mods if available
+            if (cachedMods.length > 0) {
+                displayMods(cachedMods);
+                showSuccess(`📦 Showing ${cachedMods.length} cached mods`);
             }
-            if (response.status === 403) {
-                throw new Error('Access denied by Bethesda API. Proxy may have been blocked.');
-            }
-            if (response.status === 502 || response.status === 503) {
-                throw new Error('Bethesda API is temporarily unavailable.');
-            }
-            throw new Error(`API Error: ${response.status} ${response.statusText}`);
-        }
+        };
         
-        const data = await response.json();
-        console.log('API Response:', data);
+        document.body.appendChild(script);
         
-        if (data && data.mods && Array.isArray(data.mods) && data.mods.length > 0) {
-            cachedMods = data.mods;
-            displayMods(data.mods);
-            updateTimestamp();
-            showSuccess(`Successfully loaded ${data.mods.length} Bethesda mods`);
-        } else {
-            showError('No mods found for this selection. Try a different platform or game.');
-        }
     } catch (error) {
-        console.error('Fetch Error:', error);
-        
-        let errorMsg = 'Failed to load mods from Bethesda API.';
-        
-        if (error.name === 'AbortError') {
-            errorMsg = 'Request timeout. Bethesda API took too long to respond. Try again in a moment.';
-        } else if (error instanceof TypeError) {
-            errorMsg = 'Network error. Check your connection and try again.';
-        } else {
-            errorMsg = error.message || errorMsg;
-        }
-        
-        showError(errorMsg);
-        
-        // Show cached mods if available
-        if (cachedMods.length > 0) {
-            displayMods(cachedMods);
-            showSuccess(`Showing ${cachedMods.length} cached Bethesda mods`);
-        }
-    } finally {
+        console.error('Error:', error);
         showSpinner(false);
+        showError('An error occurred: ' + error.message);
     }
 }
 
@@ -137,38 +107,39 @@ function displayMods(mods) {
     if (!DOM.modsGrid) return;
     
     if (!mods || mods.length === 0) {
-        DOM.modsGrid.innerHTML = '<p class="loading-text">No Bethesda mods found.</p>';
+        DOM.modsGrid.innerHTML = '<p class="loading-text">No mods found.</p>';
         return;
     }
     
     DOM.modsGrid.innerHTML = mods.map(mod => {
-        const uploadDate = new Date(mod.created_at || mod.updated_at || Date.now()).toLocaleDateString();
-        const author = mod.author || mod.author_username || 'Unknown Author';
-        const description = mod.description || mod.summary || 'No description available.';
-        const size = mod.size ? (mod.size / 1024 / 1024).toFixed(2) : 'N/A';
-        const downloads = mod.download_count || 0;
+        const modName = mod.name || 'Unknown Mod';
+        const author = mod.author || 'Unknown Author';
+        const filesize = mod.filesize || 'N/A';
         const platform = mod.platform || 'N/A';
+        const thumbnail = mod.thm || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22%3E%3Crect fill=%22%23334155%22 width=%22300%22 height=%22200%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%2394a3b8%22 font-family=%22Arial%22%3ENo Image%3C/text%3E%3C/svg%3E';
         
         let platformClass = 'badge-pc';
-        if (platform === 'XBOX') platformClass = 'badge-xbox';
-        if (platform === 'PLAYSTATION') platformClass = 'badge-ps4';
+        if (platform === 'XB1') platformClass = 'badge-xbox';
+        if (platform === 'PS4') platformClass = 'badge-ps4';
         
         return `
             <div class="mod-card">
-                <div class="mod-header">
-                    <h3>${mod.name || 'Unknown Mod'}</h3>
-                    <span class="mod-date">${uploadDate}</span>
+                <div class="mod-image-container">
+                    <img src="${thumbnail}" alt="${modName}" class="mod-image" onerror="this.style.display='none'">
                 </div>
-                <div class="mod-platform">
-                    <span class="badge ${platformClass}">
-                        ${platform}
-                    </span>
-                </div>
-                <p class="mod-description">${description.substring(0, 200)}${description.length > 200 ? '...' : ''}</p>
-                <div class="mod-footer">
-                    <span class="mod-stat">👤 ${author}</span>
-                    <span class="mod-stat">💾 ${size} MB</span>
-                    <span class="mod-stat">⬇️ ${downloads.toLocaleString()}</span>
+                <div class="mod-content">
+                    <div class="mod-header">
+                        <h3>${modName}</h3>
+                    </div>
+                    <div class="mod-platform">
+                        <span class="badge ${platformClass}">
+                            ${platform}
+                        </span>
+                    </div>
+                    <div class="mod-footer">
+                        <span class="mod-stat">👤 ${author}</span>
+                        <span class="mod-stat">💾 ${filesize}</span>
+                    </div>
                 </div>
             </div>
         `;
@@ -201,7 +172,7 @@ function showSuccess(message) {
         DOM.successMessage.style.display = 'block';
         setTimeout(() => {
             DOM.successMessage.style.display = 'none';
-        }, 4000);
+        }, 5000);
     }
 }
 
@@ -228,7 +199,7 @@ function setupAutoRefresh() {
     
     const interval = parseInt(value);
     refreshTimer = setInterval(fetchMods, interval);
-    console.log(`Auto-refresh set to every ${interval / 1000} seconds`);
+    console.log(`✅ Auto-refresh set to every ${interval / 1000} seconds`);
 }
 
 // Event Listeners
@@ -239,7 +210,7 @@ if (DOM.refreshInterval) DOM.refreshInterval.addEventListener('change', setupAut
 
 // Initial load
 window.addEventListener('DOMContentLoaded', () => {
-    console.log('Bethesda Mod Tracker initialized');
+    console.log('🎮 Bethesda Mod Tracker initialized');
     fetchMods();
     setupAutoRefresh();
 });
