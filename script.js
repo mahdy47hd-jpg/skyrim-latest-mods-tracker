@@ -1,5 +1,6 @@
 const CONFIG = {
-    API_URL: 'https://corsproxy.io/?' + encodeURIComponent('https://bethesda.net'),
+    API_URL: 'https://bethesda.net/api/v2/mods',
+    CORS_PROXY: 'https://corsproxy.io/?',
     defaultGame: 'skyrim',
     defaultPlatform: 'XB1'
 };
@@ -20,7 +21,7 @@ let refreshTimer = null;
 async function fetchMods() {
     if (DOM.loadingSpinner) DOM.loadingSpinner.style.display = 'block';
     if (DOM.errorMessage) DOM.errorMessage.style.display = 'none';
-    if (DOM.modsGrid) DOM.modsGrid.innerHTML = '';
+    if (DOM.modsGrid) DOM.modsGrid.innerHTML = '<p class="loading-text">Loading latest mods...</p>';
     
     try {
         const game = DOM.gameSelect ? DOM.gameSelect.value : CONFIG.defaultGame;
@@ -34,11 +35,12 @@ async function fetchMods() {
             platform = 'PS4';
         }
 
-        const targetUrl = `https://bethesda.net{game}&number_results=40&order=desc&sort=updated&platform=${platform}`;
-        const finalUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
+        // Corrected URL construction with proper game parameter
+        const targetUrl = `https://bethesda.net/api/v2/mods?game_filter=${game}&number_results=40&order=desc&sort=updated&platform=${platform}`;
+        const finalUrl = CONFIG.CORS_PROXY + encodeURIComponent(targetUrl);
         
         const response = await fetch(finalUrl);
-        if (!response.ok) throw new Error('Network response error');
+        if (!response.ok) throw new Error(`Network response error: ${response.status}`);
         
         const data = await response.json();
         
@@ -49,8 +51,8 @@ async function fetchMods() {
             showError('No mods found for this selection.');
         }
     } catch (error) {
-        console.error(error);
-        showError('Failed to load mods. Please try again.');
+        console.error('Fetch Error:', error);
+        showError('Failed to load mods. The API might be unavailable. Please try again.');
     } finally {
         if (DOM.loadingSpinner) DOM.loadingSpinner.style.display = 'none';
     }
@@ -58,13 +60,23 @@ async function fetchMods() {
 
 function displayMods(mods) {
     if (!DOM.modsGrid) return;
+    
+    if (!mods || mods.length === 0) {
+        DOM.modsGrid.innerHTML = '<p class="loading-text">No mods found.</p>';
+        return;
+    }
+    
     DOM.modsGrid.innerHTML = mods.map(mod => `
-        <div class="mod-card" style="border: 1px solid #334155; padding: 15px; margin: 10px 0; border-radius: 8px; background: #1e293b; text-align: left;">
-            <h3 style="color: #38bdf8; margin-top: 0; font-size: 18px;">${mod.name || 'Unknown Mod'}</h3>
-            <p style="font-size: 14px; color: #cbd5e1; line-height: 1.4;">${mod.description ? mod.description.substring(0, 150) + '...' : 'No description available.'}</p>
-            <div style="font-size: 12px; color: #94a3b8; display: flex; justify-content: space-between; margin-top: 10px;">
-                <span>👤 ${mod.author_username || 'Unknown'}</span>
-                <span>💾 ${(mod.size ? (mod.size / 1024 / 1024).toFixed(2) : 0)} MB</span>
+        <div class="mod-card">
+            <div class="mod-header">
+                <h3>${mod.name || 'Unknown Mod'}</h3>
+                <span class="mod-date">${new Date(mod.created_at || mod.updated_at).toLocaleDateString()}</span>
+            </div>
+            <p class="mod-description">${mod.description ? mod.description.substring(0, 150) + '...' : 'No description available.'}</p>
+            <div class="mod-footer">
+                <span class="mod-author">👤 ${mod.author_username || 'Unknown'}</span>
+                <span class="mod-size">💾 ${(mod.size ? (mod.size / 1024 / 1024).toFixed(2) : 0)} MB</span>
+                <span class="mod-downloads">⬇️ ${mod.download_count || 0}</span>
             </div>
         </div>
     `).join('');
@@ -72,7 +84,8 @@ function displayMods(mods) {
 
 function updateTimestamp() {
     if (DOM.lastUpdate) {
-        DOM.lastUpdate.innerText = `Last updated: ${new Date().toLocaleTimeString()}`;
+        const now = new Date();
+        DOM.lastUpdate.innerText = `Last updated: ${now.toLocaleTimeString()}`;
     }
 }
 
@@ -88,16 +101,20 @@ function setupAutoRefresh() {
     if (!DOM.refreshInterval) return;
     
     const value = DOM.refreshInterval.value;
-    if (value === 'manual' || !value) return;
+    if (value === '0' || !value) return;
     
-    refreshTimer = setInterval(fetchMods, parseInt(value) * 1000);
+    const interval = parseInt(value);
+    refreshTimer = setInterval(fetchMods, interval);
+    console.log(`Auto-refresh set to every ${interval / 1000} seconds`);
 }
 
+// Event Listeners
 if (DOM.refreshBtn) DOM.refreshBtn.addEventListener('click', fetchMods);
 if (DOM.gameSelect) DOM.gameSelect.addEventListener('change', fetchMods);
 if (DOM.platformSelect) DOM.platformSelect.addEventListener('change', fetchMods);
 if (DOM.refreshInterval) DOM.refreshInterval.addEventListener('change', setupAutoRefresh);
 
+// Initial load
 window.addEventListener('DOMContentLoaded', () => {
     fetchMods();
     setupAutoRefresh();
