@@ -1,6 +1,6 @@
 const CONFIG = {
-    API_URL: 'https://bethesda.net/api/v2/mods',
-    CORS_PROXY: 'https://corsproxy.io/?',
+    CORS_PROXY: 'https://cors-anywhere.herokuapp.com/',
+    API_BASE: 'https://bethesda.net/api/v2/mods',
     defaultGame: 'skyrim',
     defaultPlatform: 'XB1'
 };
@@ -35,12 +35,22 @@ async function fetchMods() {
             platform = 'PS4';
         }
 
-        // Corrected URL construction with proper game parameter
-        const targetUrl = `https://bethesda.net/api/v2/mods?game_filter=${game}&number_results=40&order=desc&sort=updated&platform=${platform}`;
-        const finalUrl = CONFIG.CORS_PROXY + encodeURIComponent(targetUrl);
+        // Use CORS proxy to bypass Bethesda's CORS restrictions
+        const apiUrl = `${CONFIG.API_BASE}?game_filter=${game}&number_results=40&order=desc&sort=updated&platform=${platform}`;
+        const proxiedUrl = CONFIG.CORS_PROXY + apiUrl;
         
-        const response = await fetch(finalUrl);
-        if (!response.ok) throw new Error(`Network response error: ${response.status}`);
+        console.log('Fetching from:', proxiedUrl);
+        
+        const response = await fetch(proxiedUrl, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
         
         const data = await response.json();
         
@@ -48,11 +58,11 @@ async function fetchMods() {
             displayMods(data.mods);
             updateTimestamp();
         } else {
-            showError('No mods found for this selection.');
+            showError('No mods found for this selection. Try a different platform or game.');
         }
     } catch (error) {
         console.error('Fetch Error:', error);
-        showError('Failed to load mods. The API might be unavailable. Please try again.');
+        showError(`Failed to load mods: ${error.message}. Please check the console for more details.`);
     } finally {
         if (DOM.loadingSpinner) DOM.loadingSpinner.style.display = 'none';
     }
