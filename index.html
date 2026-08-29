@@ -3,37 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Discover the latest published mods for Skyrim and Fallout with real-time updates.">
+    <meta name="description" content="Track the latest published Bethesda mods for Skyrim, Fallout and more.">
     <meta name="theme-color" content="#0f172a">
-    <title>Skyrim Latest Mods Tracker</title>
+    <title>Skyrim Latest Bethesda Mods Tracker</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🎮 Skyrim Latest Mods Tracker</h1>
-            <p>Discover the newest published mods for Skyrim and Fallout</p>
-            <p class="subtitle">Data powered by Nexus Mods API</p>
+            <h1>🎮 Skyrim Bethesda Mods Tracker</h1>
+            <p>Discover the newest published mods from Bethesda.net</p>
+            <p class="subtitle">Tracking Bethesda Official Mods API</p>
         </header>
 
         <div class="controls">
             <div class="filter-group">
                 <label for="gameSelect">Game:</label>
                 <select id="gameSelect">
-                    <option value="skyrimspecialedition">Skyrim Special Edition</option>
+                    <option value="skyrimse">Skyrim Special Edition</option>
                     <option value="skyrim">Skyrim (Legacy)</option>
                     <option value="fallout4">Fallout 4</option>
-                    <option value="fallout3">Fallout 3</option>
+                    <option value="fallout76">Fallout 76</option>
                 </select>
             </div>
 
             <div class="filter-group">
-                <label for="sortSelect">Sort By:</label>
-                <select id="sortSelect">
-                    <option value="updated">Recently Updated</option>
-                    <option value="published">Recently Published</option>
-                    <option value="trending">Trending</option>
-                    <option value="downloaded">Most Downloaded</option>
+                <label for="platformSelect">Platform:</label>
+                <select id="platformSelect">
+                    <option value="PC">PC (Windows)</option>
+                    <option value="XBOX">Xbox One/Series</option>
+                    <option value="PS4">PlayStation 4</option>
                 </select>
             </div>
 
@@ -56,7 +55,7 @@
         <div id="successMessage" class="success-message" style="display:none;"></div>
         
         <div class="mods-grid" id="modsGrid">
-            <p class="loading-text">Loading latest mods...</p>
+            <p class="loading-text">Loading Bethesda mods...</p>
         </div>
     </div>
 
