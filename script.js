@@ -1,5 +1,5 @@
 const CONFIG = {
-    API_URL: 'https://allorigins.win' + encodeURIComponent('https://bethesda.net'),
+    API_URL: 'https://corsproxy.io/?' + encodeURIComponent('https://bethesda.net'),
     defaultGame: 'skyrim',
     defaultPlatform: 'XB1'
 };
@@ -35,7 +35,7 @@ async function fetchMods() {
         }
 
         const targetUrl = `https://bethesda.net{game}&number_results=40&order=desc&sort=updated&platform=${platform}`;
-        const finalUrl = 'https://allorigins.win' + encodeURIComponent(targetUrl);
+        const finalUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
         
         const response = await fetch(finalUrl);
         if (!response.ok) throw new Error('Network response error');
